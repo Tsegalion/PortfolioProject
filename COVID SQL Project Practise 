@@ -1,0 +1,96 @@
+SELECT *
+FROM CovidDeaths
+
+-- Next, i'll be selecting the data i need.
+SELECT
+      location,
+      date,
+      total_cases,
+      new_cases,
+      total_deaths,
+      population
+FROM CovidDeaths
+
+-- Looking at Total Cases with Total Deaths
+-- Showing your chances of death if you have COVID in Nigeria
+SELECT
+      location,
+      date,
+      total_cases,
+      total_deaths,
+      ROUND(CAST(total_deaths AS FLOAT)/CAST(total_cases AS FLOAT)*100, 3)AS Death_Percent
+FROM CovidDeaths
+WHERE [location] = 'Nigeria'
+ORDER BY 1,2
+
+--Looking at Total Cases with Population
+--Shows a percentage of the population that got covid
+SELECT
+      location,
+      date,
+      total_cases,
+      population,
+      (total_cases/population)*100 AS PopulationPercent_infected
+FROM CovidDeaths
+WHERE [location] = 'Nigeria'
+ORDER BY 1,2
+
+--Countries with the highest covid cases compared to population
+SELECT
+      location,
+      population,
+      MAX(total_cases) AS HighestInfectionCount,
+      MAX((total_cases/population))*100 AS PopulationPercent_infected
+FROM CovidDeaths
+GROUP BY [location], population
+ORDER BY 4 DESC
+
+--Countries with the highest DEATHs compared to population
+SELECT
+      location,
+      MAX(total_deaths) AS HighestDeathCount
+FROM CovidDeaths
+WHERE continent IS NOT NULL
+GROUP BY [location]
+ORDER BY 2 DESC
+
+-- Continents with the highest deaths 
+SELECT
+      location,
+      MAX(total_deaths) AS HighestDeathCount
+FROM CovidDeaths
+WHERE continent IS NULL
+GROUP BY [location]
+ORDER BY 2 DESC
+
+-- Global total number of COVID cases
+SELECT
+      date,
+      SUM(new_cases) AS TotalCasesCount,
+      SUM(new_deaths) AS TotalDeathsCount,
+      ROUND((CAST(SUM(new_deaths) AS FLOAT)/CAST(SUM(new_cases) AS FLOAT))*100, 3) AS DeathPercentage
+FROM CovidDeaths
+WHERE continent IS NOT NULL
+GROUP BY [date]
+ORDER BY 1
+
+
+-- Total Population VS Vaccinations
+--Here i will introduce the secomd table
+SELECT *,
+      (Overall_Vaccination/population)*100 AS Vaccination_Percentage
+FROM (
+    SELECT
+      CD.continent,
+      CD.location,
+      CD.date,
+      CD.population,
+      CV.new_vaccinations,
+      SUM(CV.new_vaccinations) 
+      OVER(PARTITION BY CD.location 
+      ORDER BY CD.location, CD.date) AS Overall_Vaccination
+    FROM CovidDeaths AS CD
+    JOIN CovidVaccinations AS CV
+    ON CD.location = CV.location
+    AND CD.date = CV.date
+    WHERE CD.continent IS NOT NULL) AS T1
